@@ -85,9 +85,10 @@ class BaseRLTrainer(BaseTrainer):
                 len(self.config.VIDEO_DIR) > 0
             ), "Must specify a directory for storing videos on disk"
 
-        with TensorboardWriter(
-            self.config.TENSORBOARD_DIR, flush_secs=self.flush_secs
-        ) as writer:
+        #with TensorboardWriter(
+        #    self.config.TENSORBOARD_DIR, flush_secs=self.flush_secs
+        #) as writer:
+        with CustomLogger(not self.config.no_wb, args) as writer:
             if os.path.isfile(self.config.EVAL_CKPT_PATH_DIR):
                 # evaluate singe checkpoint
                 self._eval_checkpoint(self.config.EVAL_CKPT_PATH_DIR, writer)
