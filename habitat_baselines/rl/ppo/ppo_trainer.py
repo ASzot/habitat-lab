@@ -126,15 +126,16 @@ class PPOTrainer(BaseRLTrainer):
                 continue
 
             if isinstance(v, dict):
-                result.update(
-                    {
-                        k + "." + subk: subv
-                        for subk, subv in cls._extract_scalars_from_info(
-                            v
-                        ).items()
-                        if (k + "." + subk) not in cls.METRICS_BLACKLIST
-                    }
-                )
+                pass
+                #result.update(
+                #    {
+                #        k + "." + subk: subv
+                #        for subk, subv in cls._extract_scalars_from_info(
+                #            v
+                #        ).items()
+                #        if (k + "." + subk) not in cls.METRICS_BLACKLIST
+                #    }
+                #)
             # Things that are scalar-like will have an np.size of 1.
             # Strings also have an np.size of 1, so explicitly ban those
             elif np.size(v) == 1 and not isinstance(v, str):
@@ -183,8 +184,7 @@ class PPOTrainer(BaseRLTrainer):
 
         t_step_env = time.time()
 
-        outputs = self.envs.step([a[0].item() for a in actions])
-        observations, rewards, dones, infos = [list(x) for x in zip(*outputs)]
+        observations, rewards, dones, infos = self.envs.step(actions.cpu().numpy())
 
         env_time += time.time() - t_step_env
 
@@ -270,9 +270,15 @@ class PPOTrainer(BaseRLTrainer):
             None
         """
 
-        self.envs = construct_envs(
-            self.config, get_env_class(self.config.ENV_NAME)
-        )
+        if 'CUSTOM_LOAD' in self.config and self.config.CUSTOM_LOAD:
+            import sys
+            sys.path.insert(0, './')
+            from orp_env_adapter import get_hab_envs
+            self.envs = get_hab_envs(self.config)
+        else:
+            self.envs = construct_envs(
+                self.config, get_env_class(self.config.ENV_NAME)
+            )
 
         ppo_cfg = self.config.RL.PPO
         self.device = (

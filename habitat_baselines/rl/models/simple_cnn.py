@@ -160,4 +160,4 @@ class SimpleCNN(nn.Module):
 
         cnn_input = torch.cat(cnn_input, dim=1)
 
-        return self.cnn(cnn_input)
+        return self.cnn(cnn_input.contiguous())
