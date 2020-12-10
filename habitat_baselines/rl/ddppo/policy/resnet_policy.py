@@ -26,6 +26,8 @@ from habitat_baselines.rl.ddppo.policy.running_mean_and_var import (
 )
 from habitat_baselines.rl.models.rnn_state_encoder import RNNStateEncoder
 from habitat_baselines.rl.ppo import Net, Policy
+import rlf.rl.utils as rutils
+
 
 
 class PointNavResNetPolicy(Policy):
@@ -53,7 +55,7 @@ class PointNavResNetPolicy(Policy):
                 normalize_visual_inputs=normalize_visual_inputs,
                 obs_transform=obs_transform,
             ),
-            action_space.n,
+            action_space,
         )
 
 
@@ -188,8 +190,9 @@ class PointNavResNetNet(Net):
     ):
         super().__init__()
 
-        self.prev_action_embedding = nn.Embedding(action_space.n + 1, 32)
-        self._n_prev_action = 32
+        #self.prev_action_embedding = nn.Embedding(rutils.get_ac_dim(action_space) + 1, 32)
+        #self._n_prev_action = 32
+        self._n_prev_action = action_space.shape[0]
         rnn_input_size = self._n_prev_action
 
         if (
@@ -256,6 +259,11 @@ class PointNavResNetNet(Net):
             input_compass_dim = 2  # cos and sin of the angle
             self.compass_embedding = nn.Linear(input_compass_dim, 32)
             rnn_input_size += 32
+
+        # FUSE PROPRIOCEPTIVE STATE
+        self.fuse_states = ["joint", "ee_pos"]
+        rnn_input_size += sum([observation_space.spaces[n].shape[0] for n in
+                self.fuse_states])
 
         self._hidden_size = hidden_size
 
@@ -364,9 +372,13 @@ class PointNavResNetNet(Net):
                 self.gps_embedding(observations[EpisodicGPSSensor.cls_uuid])
             )
 
-        prev_actions = self.prev_action_embedding(
-            ((prev_actions.float() + 1) * masks).long().squeeze(dim=-1)
-        )
+        # always append the fuse states.
+        x.append(torch.cat([observations[k] for k in self.fuse_states],
+            dim=-1))
+
+        #prev_actions = self.prev_action_embedding(
+        #    ((prev_actions.float() + 1) * masks).long().squeeze(dim=-1)
+        #)
         x.append(prev_actions)
 
         x = torch.cat(x, dim=1)
